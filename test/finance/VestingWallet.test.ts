@@ -400,17 +400,18 @@ describe("VestingWallet", function() {
                     durationSeconds,
                     totalAllocation
                 );
+                const expectedReleaseAmount = expectedReleasedAmount.sub(curReleasedAmount);
 
                 // check released amount
                 expect(
                     actualReleasedAmount
-                ).to.be.equal(expectedReleasedAmount)
+                ).to.be.equal(expectedReleaseAmount)
 
                 // check balance
                 expect(
                     await ethers.provider.getBalance(vestingWallet.address)
                 ).to.be.equal(
-                    estimateAmount.sub(expectedReleasedAmount)
+                    estimateAmount.sub(expectedReleaseAmount)
                 )
             })
         })
@@ -450,21 +451,34 @@ describe("VestingWallet", function() {
                     totalAllocation
                 );
 
+                const releasedAmount = await vestingWallet.released();
+                const releaseAmount = estimateAmount.sub(releasedAmount);
+
                 // deposit estimated amount
                 await anyone.sendTransaction({
                     to: vestingWallet.address,
-                    value: estimateAmount
+                    value: releaseAmount
                 });
 
+                // check balance
+                expect(
+                    await ethers.provider.getBalance(vestingWallet.address)
+                ).to.be.equal(releaseAmount)
+
                 await expect(
-                    await vestingWallet.connect(beneficiary).releaseSpecificAmount(estimateAmount)
+                    await vestingWallet.connect(beneficiary).releaseSpecificAmount(releaseAmount)
                 ).to.be.emit(
                     vestingWallet,
                     "EtherReleased"
                 ).withArgs(
                     beneficiaryAddress,
-                    estimateAmount
+                    releaseAmount
                 )
+
+                // check balance
+                expect(
+                    await ethers.provider.getBalance(vestingWallet.address)
+                ).to.be.equal(0)
             })
         })
     })
